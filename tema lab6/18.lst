@@ -1,0 +1,76 @@
+     1                                  ; A string of doublewords is given. Order in increasing order the string of the high words (most significant) from these doublewords. The low words (least significant) remain unchanged.
+     2                                  ; Example:
+     3                                  ; being given
+     4                                  ; sir DD 12AB5678h, 1256ABCDh, 12344344h 
+     5                                  ; the result will be
+     6                                  ; 12345678h, 1256ABCDh, 12AB4344h.
+     7                                  bits 32 
+     8                                  
+     9                                  global start        
+    10                                  
+    11                                  extern exit               
+    12                                  import exit msvcrt.dll    
+    13                                  
+    14                                  segment data use32 class=data
+    15 00000000 7856AB12CDAB561244-         sir dd 12AB5678h, 1256ABCDh, 12344344h
+    15 00000009 433412             
+    16                                      len1 equ ($-sir)/4
+    17 0000000C 00000000<rept>              aux times len1 dd 0
+    18                                  
+    19                                  ; our code starts here
+    20                                  segment code use32 class=code
+    21                                      start:
+    22 00000000 FC                              cld
+    23 00000001 BE[00000000]                    mov esi, sir
+    24 00000006 BF[0C000000]                    mov edi, aux
+    25 0000000B B903000000                      mov ecx, len1
+    26                                          
+    27 00000010 E352                            jecxz ending
+    28                                          copy:
+    29 00000012 AD                                  lodsd
+    30 00000013 AB                                  stosd
+    31 00000014 E2FC                                loop copy                       ; copy array in auxiliary array
+    32                                              
+    33                                              
+    34 00000016 BF[0C000000]                    mov edi, aux
+    35 0000001B B903000000                      mov ecx, len1
+    36                                          loop1:
+    37 00000020 89FE                                mov esi, edi
+    38 00000022 83C604                              add esi, 4                      ; Begin from next step
+    39 00000025 89CA                                mov edx, ecx                    
+    40 00000027 83EA01                              sub edx, 1                      ; Number of steps from current position to the end of the array
+    41 0000002A 7412                                jz endLoop2
+    42                                             
+    43                                              loop2:
+    44 0000002C AD                                      lodsd
+    45 0000002D 3B07                                    cmp eax, [edi]
+    46 0000002F 7307                                    jae pass
+    47 00000031 8B1F                                    mov ebx, [edi]
+    48 00000033 895EFC                                  mov [esi - 4], ebx
+    49 00000036 8907                                    mov [edi], eax              ; swap if we find a bigger value
+    50                                                  
+    51                                                  pass:
+    52 00000038 4A                                      dec edx
+    53 00000039 83FA00                                  cmp edx, 0
+    54 0000003C 77EE                                    ja loop2
+    55                                              endLoop2:
+    56 0000003E 83C704                              add edi, 4
+    57 00000041 E2DD                                loop loop1
+    58                                              
+    59                                              
+    60 00000043 BE[0C000000]                    mov esi, aux
+    61 00000048 BF[00000000]                    mov edi, sir
+    62 0000004D B903000000                      mov ecx, len1
+    63                                          solve:
+    64 00000052 AD                                  lodsd 
+    65 00000053 250000FFFF                          and eax, 0FFFF0000h     ; take high word from sorted array
+    66 00000058 BBFFFF0000                          mov ebx, 0FFFFh
+    67 0000005D 231F                                and ebx, [edi]          ; take low word from original array
+    68 0000005F 09D8                                or eax, ebx
+    69 00000061 AB                                  stosd                   ; replace value in sorted array
+    70                                              
+    71 00000062 E2EE                                loop solve
+    72                                             
+    73                                          ending:
+    74 00000064 6A00                            push    dword 0      ; push the parameter for exit onto the stack
+    75 00000066 FF15[00000000]                  call    [exit]       ; call exit to terminate the program

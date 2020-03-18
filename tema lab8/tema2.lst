@@ -1,0 +1,85 @@
+     1                                  ; A text file is given. The text contains letters, spaces and points. Read the content of the file, determine the number of words and display the result on the screen. (A word is a sequence of characters separated b
+     2                                  bits 32
+     3                                  
+     4                                  global start
+     5                                  
+     6                                  extern exit, fopen, fclose, fread, printf
+     7                                  import exit msvcrt.dll
+     8                                  import fopen msvcrt.dll
+     9                                  import fread msvcrt.dll
+    10                                  import fclose msvcrt.dll 
+    11                                  import printf msvcrt.dll 
+    12                                  
+    13                                  segment data use32 class=data
+    14 00000000 612E74787400                inputfile db 'a.txt', 0
+    15 00000006 7200                        modread db 'r', 0
+    16 00000008 FFFFFFFF                    handle dd -1
+    17 0000000C 00                          c db 0
+    18 0000000D 257500                      printformat db '%u', 0
+    19 00000010 00000000                    count dd 0
+    20                                  
+    21                                  segment code use32 class=code
+    22                                      start:
+    23                                          ; fopen(string path, string mode) - opens the file path in the specified mode
+    24 00000000 68[06000000]                    push dword modread ; for strings, the offset is pushed on the stack
+    25 00000005 68[00000000]                    push dword inputfile ; for strings, the offset is pushed on the stack
+    26 0000000A FF15[00000000]                  call [fopen]
+    27 00000010 83C408                          add esp, 4*2
+    28                                          
+    29                                          ; fopen returns in EAX the file handle or zero (in case of error)
+    30                                          ; this file handle is just a dword used by the operating system and is required for all subsequent
+    31                                          ; function calls that work with this file.
+    32 00000013 A3[08000000]                    mov [handle], eax ; store the handle in a local variable
+    33 00000018 83F800                          cmp eax, 0
+    34 0000001B 7472                            je theend ; if error, move to the end of the program
+    35                                  
+    36 0000001D B300                            mov bl, 0
+    37 0000001F C705[10000000]0000-             mov dword[count], 0
+    37 00000027 0000               
+    38                                          repeat:
+    39                                              ;fread(string ptr, integer size, integer n, FILE * handle) - reads n times size bytes from the
+    40                                              ; file identified by handle and place the read bytes in the string ptr.
+    41                                              ; we read 1 byte from the file handle
+    42 00000029 FF35[08000000]                      push dword [handle] ; read from handle
+    43 0000002F 6A01                                push dword 1 ; read 1 time
+    44 00000031 6A01                                push dword 1 ; read 1 byte
+    45 00000033 68[0C000000]                        push dword c ; store the byte in c
+    46 00000038 FF15[00000000]                      call [fread]
+    47 0000003E 83C410                              add esp, 4*4
+    48                                  
+    49 00000041 83F800                              cmp eax, 0 ; the function returns zero in EAX in case of error
+    50 00000044 7426                                je error
+    51                                              
+    52 00000046 803D[0C000000]2E                    cmp byte [c], '.'
+    53 0000004D 740D                                je increment
+    54 0000004F 803D[0C000000]20                    cmp byte [c], ' '
+    55 00000056 7404                                je increment
+    56                                              
+    57 00000058 B301                                mov bl, 1
+    58 0000005A EB0E                                jmp continue
+    59                                              
+    60                                              increment:
+    61 0000005C 80FB00                                  cmp bl, 0
+    62 0000005F 7409                                    je continue
+    63                                                  
+    64 00000061 B300                                    mov bl, 0
+    65 00000063 8305[10000000]01                        add dword [count], 1
+    66                                              
+    67                                              continue:
+    68 0000006A EBBD                                    jmp repeat
+    69                                              
+    70                                          error:
+    71                                              ; fclose(FILE* handle) - close the file identified by handle
+    72 0000006C FF35[08000000]                      push dword [handle]
+    73 00000072 FF15[00000000]                      call [fclose]
+    74 00000078 83C404                              add esp, 4*1
+    75                                         
+    76                                          ; print the count
+    77 0000007B FF35[10000000]                  push dword [count] 
+    78 00000081 68[0D000000]                    push dword printformat
+    79 00000086 FF15[00000000]                  call [printf]
+    80 0000008C 83C408                          add esp, 4*2
+    81                                         
+    82                                          theend:
+    83 0000008F 6A00                            push dword 0
+    84 00000091 FF15[00000000]                  call [exit]
